@@ -1,0 +1,23 @@
+#partial-container h2 {
+  border-bottom: 1px solid silver;
+  padding: 3px;
+}
+#partial-container h2.editing {
+  box-shadow: inset 0px 0px 1px 1px rgba(50,50,50,0.2);
+  outline: none;
+}
+.content-section {
+  margin:auto;
+  margin-top:20px;
+  width:540px;
+}
+#saved-image {
+  display:none;
+}
+.drawing-container {
+  border:1px solid silver;
+  height:400px;
+}
+.btn + .btn {
+  margin-left: 2px;
+}

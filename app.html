@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css"> -->
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <link rel="stylesheet" href="app.css">
+  </head>
+  <body class="container ">
+
+    <div id="partial-container" class="content-section">
+      <section>
+        <heading><h2>Loading &hellip;</h2></heading>
+      </section>
+    </div>
+
+    <section class="content-section drawing-container clearfix">
+      <canvas id="canvas"></canvas>
+      <div class="pull-right">
+        <button data-action="clear" class="btn">Clear</button>
+        <button data-action="save" class="btn btn-primary">Save</button>
+      </div>
+    </section>
+    
+    <form id="hidden-form" action="save_image.php" method="post" class="hidden">
+      <input type="hidden" name="ticket" />
+      <input type="hidden" name="auid" />
+      <input type="hidden" name="title" />
+      <input type="hidden" name="image" />
+    </form>
+
+    <!-- script type="text/javascript" src="http://code.jquery.com/jquery-2.1.3.min.js"></script> -->
+    <script type="text/javascript" src="jquery-2.1.3.min.js"></script>
+    <!-- script type="text/javascript" src="http://jimdoescode.github.io/jqScribble/jquery.jqscribble.js"></script> -->
+    <script type="text/javascript" src="jquery.jqscribble.js"></script>
+    <!-- script type="text/javascript" src="https://www.dropbox.com/s/l6hgjq7mh52o6od/spiceworks-sdk.js?dl=1&raw=1"></script> -->
+    <script type="text/javascript" src="spiceworks-sdk.min.js"></script>
+    <script type="text/javascript">
+      $(document).ready(function(){
+        $('#canvas').jqScribble();
+
+        // switch header into "edit mode" on click
+        // do this with delegating handler because the event handlers are
+        // removed when using $.html() to replace partial contents
+        $('#partial-container').on('click', 'h2', function(evt){
+          $(this).addClass('editing');
+          $(this).attr('contenteditable', true);
+          $(this).focus();
+        });
+
+        // reset the canvas on 'clear'
+        $('.drawing-container .btn[data-action="clear"]').on('click', function(evt){
+          $('#canvas').jqScribble.clear();
+        });
+
+        // save the title and image to the server on 'save'
+        $('.drawing-container .btn[data-action="save"]').on('click', function(evt){
+          var btn = $(this);
+          $('#canvas').jqScribble.save(function(data){
+            btn.attr('disabled',true);
+            // copy the title from the title section to the form
+            var title = $('#partial-container heading').text();
+            title = $.trim(title);
+            $('#hidden-form input[name="title"]').attr('value', title);
+            // save the image data to the form
+            $('#hidden-form input[name="image"]').attr('value', data);
+            // we could have the browser submit the form which would make the browser display the action result
+            // but we're going to ignore the result html and just submit via AJAX
+            var form = $('#hidden-form');
+            $.post(form.attr('action'), form.serialize())
+             .done(function(){
+               $('#partial-container h2').removeClass('editing');
+             })
+             .always(function(){
+               btn.attr('disabled',false);
+             });
+          });
+        });
+
+        // this function requests the php-rendered html from the server and loads it into the page
+        // it also takes the image returned from the server and loads the image data into the canvas
+        // it returns the promise so the caller can also react to success or failure
+        function loadTicketImage(ticket, auid) {
+          return $.get('/saved_image.php', {'ticket': ticket, 'auid': auid}, 'text/html')
+           .done(function(html){
+             // load the partial html into the page
+             $('#partial-container').html(html);
+             // load the png image itself into the canvas
+             var image = $('#partial-container img')[0];
+             $('#canvas')[0].getContext('2d').drawImage(image, 0, 0);
+           });
+        }
+
+        // init the page
+        var auid = null;
+        var ticket = null;
+        var card = new SW.Card();
+
+        // get the application id from the environment
+        card.onActivate(function(env){
+          auid = env.app_host.auid;
+          $('#hidden-form input[name="auid"]').attr('value', auid);
+        });
+
+        // get the ticket id from the helpdesk service event
+        card.services('helpdesk').on('showTicket', function(id){
+          ticket = id;
+          $('#hidden-form input[name="ticket"]').attr('value', id);
+          // load the ticket
+          loadTicketImage(ticket, auid)
+            // on failure (most likely no image) use the ticket summary
+            .fail(function(){
+              card.services('helpdesk').request('ticket', ticket).then(function(data){
+                var title = "Inspired by \"" + data.summary + "\"";
+                $('#partial-container h2').text(title);
+              });
+            });
+        });
+
+      });
+    </script>
+  </body>
+</html>
