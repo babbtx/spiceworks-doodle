@@ -87,15 +87,30 @@
         }
 
         // init the page
-        var auid = 'foo';
-        var ticket = 1;
-        $('#hidden-form input[name="auid"]').attr('value', auid);
-        $('#hidden-form input[name="ticket"]').attr('value', ticket);
-        loadTicketImage(ticket, auid)
-          // on failure (most likely no image) set to "Untitled"
-          .fail(function(){
-            $('#partial-container h2').text("Untitled");
-          });
+        var auid = null;
+        var ticket = null;
+        var card = new SW.Card();
+
+        // get the application id from the environment
+        card.onActivate(function(env){
+          auid = env.app_host.auid;
+          $('#hidden-form input[name="auid"]').attr('value', auid);
+        });
+
+        // get the ticket id from the helpdesk service event
+        card.services('helpdesk').on('showTicket', function(id){
+          ticket = id;
+          $('#hidden-form input[name="ticket"]').attr('value', ticket);
+          // load the ticket
+          loadTicketImage(ticket, auid)
+            // on failure (most likely no image) use the ticket summary
+            .fail(function(){
+              card.services('helpdesk').request('ticket', ticket).then(function(data){
+                var title = "Inspired by \"" + data.summary + "\"";
+                $('#partial-container h2').text(title);
+              });
+            });
+        });
 
       });
     </script>
