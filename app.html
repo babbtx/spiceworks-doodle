@@ -8,7 +8,7 @@
 
     <div id="partial-container" class="content-section">
       <section>
-        <heading><h2>Untitled</h2></heading>
+        <heading><h2>Loading&hellip;</h2></heading>
       </section>
     </div>
 
@@ -21,8 +21,8 @@
     </section>
     
     <form id="hidden-form" action="save_image.php" method="post" class="hidden">
-      <input type="hidden" name="ticket" value="1" />
-      <input type="hidden" name="auid"  value="foo" />
+      <input type="hidden" name="ticket" />
+      <input type="hidden" name="auid" />
       <input type="hidden" name="title" />
       <input type="hidden" name="image" />
     </form>
@@ -71,6 +71,31 @@
              });
           });
         });
+
+        // this function requests the php-rendered html from the server and loads it into the page
+        // it also takes the image returned from the server and loads the image data into the canvas
+        // it returns the promise so the caller can also react to success or failure
+        function loadTicketImage(ticket, auid) {
+          return $.get('/saved_image.php', {'ticket': ticket, 'auid': auid}, 'text/html')
+           .done(function(html){
+             // load the partial html into the page
+             $('#partial-container').html(html);
+             // load the png image itself into the canvas
+             var image = $('#partial-container img')[0];
+             $('#canvas')[0].getContext('2d').drawImage(image, 0, 0);
+           });
+        }
+
+        // init the page
+        var auid = 'foo';
+        var ticket = 1;
+        $('#hidden-form input[name="auid"]').attr('value', auid);
+        $('#hidden-form input[name="ticket"]').attr('value', ticket);
+        loadTicketImage(ticket, auid)
+          // on failure (most likely no image) set to "Untitled"
+          .fail(function(){
+            $('#partial-container h2').text("Untitled");
+          });
 
       });
     </script>
